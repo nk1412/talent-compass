@@ -1,13 +1,15 @@
 import { useState, useMemo } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { CandidateCard } from '@/components/candidates/CandidateCard';
-import { mockCandidates } from '@/data/mockCandidates';
+import { useCandidates } from '@/hooks/useCandidates';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, SlidersHorizontal, Grid, List, X } from 'lucide-react';
-import { PipelineStage } from '@/types/candidate';
+import { Search, SlidersHorizontal, X, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import type { Database } from '@/integrations/supabase/types';
+
+type PipelineStage = Database['public']['Enums']['pipeline_stage'];
 
 const stages: { value: PipelineStage | 'all'; label: string }[] = [
   { value: 'all', label: 'All Stages' },
@@ -28,21 +30,24 @@ const experienceRanges = [
 ];
 
 export default function Candidates() {
+  const { data: candidates, isLoading } = useCandidates();
   const [searchQuery, setSearchQuery] = useState('');
   const [stageFilter, setStageFilter] = useState<PipelineStage | 'all'>('all');
   const [experienceFilter, setExperienceFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
 
   const filteredCandidates = useMemo(() => {
-    return mockCandidates.filter((candidate) => {
+    if (!candidates) return [];
+    
+    return candidates.filter((candidate) => {
       // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         const matchesSearch =
-          candidate.fullName.toLowerCase().includes(query) ||
+          candidate.full_name.toLowerCase().includes(query) ||
           candidate.email.toLowerCase().includes(query) ||
-          candidate.skills.some((s) => s.toLowerCase().includes(query)) ||
-          candidate.location.toLowerCase().includes(query);
+          candidate.skills?.some((s) => s.toLowerCase().includes(query)) ||
+          candidate.location?.toLowerCase().includes(query);
         if (!matchesSearch) return false;
       }
 
@@ -53,7 +58,7 @@ export default function Candidates() {
 
       // Experience filter
       if (experienceFilter !== 'all') {
-        const exp = candidate.totalExperience;
+        const exp = candidate.total_experience || 0;
         switch (experienceFilter) {
           case '0-2':
             if (exp > 2) return false;
@@ -72,7 +77,7 @@ export default function Candidates() {
 
       return true;
     });
-  }, [searchQuery, stageFilter, experienceFilter]);
+  }, [candidates, searchQuery, stageFilter, experienceFilter]);
 
   const activeFiltersCount = [
     stageFilter !== 'all',
@@ -84,6 +89,16 @@ export default function Candidates() {
     setExperienceFilter('all');
     setSearchQuery('');
   };
+
+  if (isLoading) {
+    return (
+      <AppLayout title="Candidates">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout title="Candidates">

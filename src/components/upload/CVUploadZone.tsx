@@ -1,11 +1,13 @@
 import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, File, X, CheckCircle, AlertCircle } from 'lucide-react';
+import { Upload, File, X, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
+import { uploadResume, parseResumeWithAI, createCandidate } from '@/lib/api/candidates';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface UploadedFile {
   id: string;
@@ -18,6 +20,80 @@ interface UploadedFile {
 export function CVUploadZone() {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const processFile = async (file: File, fileId: string) => {
+    try {
+      // Update to uploading status
+      setFiles((prev) =>
+        prev.map((f) => (f.id === fileId ? { ...f, status: 'uploading', progress: 20 } : f))
+      );
+
+      // Upload the file to storage
+      const { path, fileName } = await uploadResume(file);
+
+      setFiles((prev) =>
+        prev.map((f) => (f.id === fileId ? { ...f, progress: 50 } : f))
+      );
+
+      // Read file content for parsing
+      const text = await file.text();
+
+      setFiles((prev) =>
+        prev.map((f) => (f.id === fileId ? { ...f, status: 'processing', progress: 70 } : f))
+      );
+
+      // Parse with AI
+      const parsedData = await parseResumeWithAI(text, fileName);
+
+      setFiles((prev) =>
+        prev.map((f) => (f.id === fileId ? { ...f, progress: 90 } : f))
+      );
+
+      // Create candidate in database
+      await createCandidate({
+        full_name: parsedData.fullName || 'Unknown',
+        email: parsedData.email || `unknown-${Date.now()}@placeholder.com`,
+        phone: parsedData.phone,
+        location: parsedData.location,
+        total_experience: parsedData.totalExperience || 0,
+        skills: parsedData.skills || [],
+        education: parsedData.education || [],
+        employment_history: parsedData.employmentHistory || [],
+        resume_file_path: path,
+        resume_file_name: fileName,
+        parsed_resume_text: text.slice(0, 10000), // Limit text size
+        source: parsedData.source || 'CV Upload',
+        stage: 'screening',
+      });
+
+      setFiles((prev) =>
+        prev.map((f) => (f.id === fileId ? { ...f, status: 'complete', progress: 100 } : f))
+      );
+
+      // Invalidate candidates query to refresh data
+      queryClient.invalidateQueries({ queryKey: ['candidates'] });
+
+      toast({
+        title: 'CV Processed Successfully',
+        description: `${parsedData.fullName || fileName} has been added to candidates.`,
+      });
+    } catch (error) {
+      console.error('Error processing file:', error);
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.id === fileId
+            ? { ...f, status: 'error', error: error instanceof Error ? error.message : 'Processing failed' }
+            : f
+        )
+      );
+      toast({
+        title: 'Processing Failed',
+        description: error instanceof Error ? error.message : 'Failed to process CV',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const newFiles: UploadedFile[] = acceptedFiles.map((file) => ({
@@ -29,46 +105,11 @@ export function CVUploadZone() {
 
     setFiles((prev) => [...prev, ...newFiles]);
 
-    // Simulate upload and processing
+    // Process each file
     newFiles.forEach((uploadedFile) => {
-      simulateUpload(uploadedFile.id);
+      processFile(uploadedFile.file, uploadedFile.id);
     });
   }, []);
-
-  const simulateUpload = (fileId: string) => {
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += Math.random() * 20;
-      if (progress >= 100) {
-        progress = 100;
-        clearInterval(interval);
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.id === fileId ? { ...f, status: 'processing', progress: 100 } : f
-          )
-        );
-        
-        // Simulate processing
-        setTimeout(() => {
-          setFiles((prev) =>
-            prev.map((f) =>
-              f.id === fileId ? { ...f, status: 'complete' } : f
-            )
-          );
-          toast({
-            title: 'CV Processed',
-            description: 'Candidate information has been extracted successfully.',
-          });
-        }, 1500);
-      } else {
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.id === fileId ? { ...f, progress } : f
-          )
-        );
-      }
-    }, 200);
-  };
 
   const removeFile = (fileId: string) => {
     setFiles((prev) => prev.filter((f) => f.id !== fileId));
@@ -158,6 +199,9 @@ export function CVUploadZone() {
                         {uploadedFile.status === 'error' && (
                           <AlertCircle className="w-5 h-5 text-destructive" />
                         )}
+                        {(uploadedFile.status === 'uploading' || uploadedFile.status === 'processing') && (
+                          <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
@@ -170,13 +214,16 @@ export function CVUploadZone() {
                     </div>
                     <div className="flex items-center gap-3 mt-2">
                       <Progress value={uploadedFile.progress} className="h-1.5 flex-1" />
-                      <span className="text-xs text-muted-foreground w-20 text-right">
-                        {uploadedFile.status === 'uploading' && `${Math.round(uploadedFile.progress)}%`}
+                      <span className="text-xs text-muted-foreground w-24 text-right">
+                        {uploadedFile.status === 'uploading' && 'Uploading...'}
                         {uploadedFile.status === 'processing' && 'Processing...'}
                         {uploadedFile.status === 'complete' && 'Complete'}
                         {uploadedFile.status === 'error' && 'Error'}
                       </span>
                     </div>
+                    {uploadedFile.error && (
+                      <p className="text-xs text-destructive mt-1">{uploadedFile.error}</p>
+                    )}
                   </div>
                 </div>
               </motion.div>
