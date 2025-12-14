@@ -1,4 +1,4 @@
-import { Bell, Search, User } from 'lucide-react';
+import { Bell, Search, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -9,12 +9,22 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface HeaderProps {
   title: string;
 }
 
 export function Header({ title }: HeaderProps) {
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/auth');
+  };
+
   return (
     <header className="h-16 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-6 sticky top-0 z-40">
       <h1 className="font-heading text-xl font-semibold">{title}</h1>
@@ -43,7 +53,7 @@ export function Header({ title }: HeaderProps) {
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                 <User className="w-4 h-4 text-primary" />
               </div>
-              <span className="hidden md:inline font-medium">John Recruiter</span>
+              <span className="hidden md:inline font-medium">{user?.email?.split('@')[0] || 'User'}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
@@ -51,9 +61,11 @@ export function Header({ title }: HeaderProps) {
             <DropdownMenuSeparator />
             <DropdownMenuItem>Profile</DropdownMenuItem>
             <DropdownMenuItem>Team Settings</DropdownMenuItem>
-            <DropdownMenuItem>Billing</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">Log out</DropdownMenuItem>
+            <DropdownMenuItem className="text-destructive" onClick={handleSignOut}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Log out
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
