@@ -1,20 +1,25 @@
-import { Candidate } from '@/types/candidate';
 import { StageBadge } from '@/components/ui/stage-badge';
 import { MapPin, Briefcase, Mail, Phone } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import type { Database } from '@/integrations/supabase/types';
+
+type CandidateRow = Database['public']['Tables']['candidates']['Row'];
 
 interface CandidateCardProps {
-  candidate: Candidate;
+  candidate: CandidateRow;
   index: number;
 }
 
 export function CandidateCard({ candidate, index }: CandidateCardProps) {
-  const initials = candidate.fullName
+  const initials = candidate.full_name
     .split(' ')
     .map((n) => n[0])
     .join('')
     .toUpperCase();
+
+  const employmentHistory = (candidate.employment_history as Array<{ company?: string; position?: string }>) || [];
+  const currentJob = employmentHistory[0];
 
   return (
     <motion.div
@@ -37,43 +42,51 @@ export function CandidateCard({ candidate, index }: CandidateCardProps) {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="font-heading font-semibold text-lg group-hover:text-primary transition-colors">
-                  {candidate.fullName}
+                  {candidate.full_name}
                 </h3>
-                <p className="text-muted-foreground text-sm">
-                  {candidate.employmentHistory[0]?.position} at {candidate.employmentHistory[0]?.company}
-                </p>
+                {currentJob && (
+                  <p className="text-muted-foreground text-sm">
+                    {currentJob.position} at {currentJob.company}
+                  </p>
+                )}
               </div>
-              <StageBadge stage={candidate.stage} />
+              {candidate.stage && <StageBadge stage={candidate.stage} />}
             </div>
 
             {/* Meta Info */}
             <div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1.5">
-                <MapPin className="w-4 h-4" />
-                {candidate.location}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Briefcase className="w-4 h-4" />
-                {candidate.totalExperience} years
-              </span>
-            </div>
-
-            {/* Skills */}
-            <div className="flex flex-wrap gap-1.5 mt-3">
-              {candidate.skills.slice(0, 5).map((skill) => (
-                <span
-                  key={skill}
-                  className="px-2 py-0.5 bg-secondary text-secondary-foreground text-xs rounded-md"
-                >
-                  {skill}
+              {candidate.location && (
+                <span className="flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4" />
+                  {candidate.location}
                 </span>
-              ))}
-              {candidate.skills.length > 5 && (
-                <span className="px-2 py-0.5 text-muted-foreground text-xs">
-                  +{candidate.skills.length - 5} more
+              )}
+              {candidate.total_experience !== null && (
+                <span className="flex items-center gap-1.5">
+                  <Briefcase className="w-4 h-4" />
+                  {candidate.total_experience} years
                 </span>
               )}
             </div>
+
+            {/* Skills */}
+            {candidate.skills && candidate.skills.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-3">
+                {candidate.skills.slice(0, 5).map((skill) => (
+                  <span
+                    key={skill}
+                    className="px-2 py-0.5 bg-secondary text-secondary-foreground text-xs rounded-md"
+                  >
+                    {skill}
+                  </span>
+                ))}
+                {candidate.skills.length > 5 && (
+                  <span className="px-2 py-0.5 text-muted-foreground text-xs">
+                    +{candidate.skills.length - 5} more
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -87,14 +100,16 @@ export function CandidateCard({ candidate, index }: CandidateCardProps) {
             <Mail className="w-4 h-4" />
             <span className="hidden sm:inline">{candidate.email}</span>
           </a>
-          <a
-            href={`tel:${candidate.phone}`}
-            onClick={(e) => e.stopPropagation()}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors"
-          >
-            <Phone className="w-4 h-4" />
-            <span className="hidden sm:inline">{candidate.phone}</span>
-          </a>
+          {candidate.phone && (
+            <a
+              href={`tel:${candidate.phone}`}
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors"
+            >
+              <Phone className="w-4 h-4" />
+              <span className="hidden sm:inline">{candidate.phone}</span>
+            </a>
+          )}
         </div>
       </Link>
     </motion.div>

@@ -1,12 +1,14 @@
 import { AppLayout } from '@/components/layout/AppLayout';
 import { StatCard } from '@/components/ui/stat-card';
 import { CandidateCard } from '@/components/candidates/CandidateCard';
-import { mockCandidates, mockDashboardStats } from '@/data/mockCandidates';
-import { Users, UserPlus, GitBranch, CheckCircle, TrendingUp } from 'lucide-react';
+import { useCandidates, useDashboardStats } from '@/hooks/useCandidates';
+import { Users, UserPlus, GitBranch, CheckCircle, TrendingUp, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { PipelineStage } from '@/types/candidate';
+import type { Database } from '@/integrations/supabase/types';
+
+type PipelineStage = Database['public']['Enums']['pipeline_stage'];
 
 const stageColors: Record<PipelineStage, string> = {
   screening: 'bg-stage-screening',
@@ -18,8 +20,19 @@ const stageColors: Record<PipelineStage, string> = {
 };
 
 export default function Dashboard() {
-  const recentCandidates = mockCandidates.slice(0, 4);
-  const stats = mockDashboardStats;
+  const { data: candidates, isLoading } = useCandidates();
+  const stats = useDashboardStats(candidates);
+  const recentCandidates = candidates?.slice(0, 4) || [];
+
+  if (isLoading) {
+    return (
+      <AppLayout title="Dashboard">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout title="Dashboard">
@@ -71,9 +84,18 @@ export default function Dashboard() {
             </Link>
           </div>
           <div className="space-y-3">
-            {recentCandidates.map((candidate, index) => (
-              <CandidateCard key={candidate.id} candidate={candidate} index={index} />
-            ))}
+            {recentCandidates.length > 0 ? (
+              recentCandidates.map((candidate, index) => (
+                <CandidateCard key={candidate.id} candidate={candidate} index={index} />
+              ))
+            ) : (
+              <div className="glass-card rounded-xl p-8 text-center">
+                <p className="text-muted-foreground">No candidates yet. Upload some CVs to get started!</p>
+                <Link to="/upload">
+                  <Button className="mt-4">Upload CVs</Button>
+                </Link>
+              </div>
+            )}
           </div>
         </div>
 
@@ -88,26 +110,30 @@ export default function Dashboard() {
           >
             <h3 className="font-heading font-semibold mb-4">Pipeline Overview</h3>
             <div className="space-y-3">
-              {stats.stageBreakdown.map((item) => {
-                const total = stats.stageBreakdown.reduce((acc, s) => acc + s.count, 0);
-                const percentage = (item.count / total) * 100;
-                return (
-                  <div key={item.stage} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="capitalize">{item.stage}</span>
-                      <span className="text-muted-foreground">{item.count}</span>
+              {stats.stageBreakdown.length > 0 ? (
+                stats.stageBreakdown.map((item) => {
+                  const total = stats.stageBreakdown.reduce((acc, s) => acc + s.count, 0);
+                  const percentage = total > 0 ? (item.count / total) * 100 : 0;
+                  return (
+                    <div key={item.stage} className="space-y-1.5">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="capitalize">{item.stage}</span>
+                        <span className="text-muted-foreground">{item.count}</span>
+                      </div>
+                      <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${percentage}%` }}
+                          transition={{ duration: 0.5, delay: 0.5 }}
+                          className={`h-full rounded-full ${stageColors[item.stage]}`}
+                        />
+                      </div>
                     </div>
-                    <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${percentage}%` }}
-                        transition={{ duration: 0.5, delay: 0.5 }}
-                        className={`h-full rounded-full ${stageColors[item.stage]}`}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              ) : (
+                <p className="text-sm text-muted-foreground">No pipeline data yet</p>
+              )}
             </div>
           </motion.div>
 
@@ -123,17 +149,21 @@ export default function Dashboard() {
               <TrendingUp className="w-4 h-4 text-muted-foreground" />
             </div>
             <div className="space-y-3">
-              {stats.topSkills.map((skill, index) => (
-                <div key={skill.skill} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center">
-                      {index + 1}
-                    </span>
-                    <span className="font-medium">{skill.skill}</span>
+              {stats.topSkills.length > 0 ? (
+                stats.topSkills.map((skill, index) => (
+                  <div key={skill.skill} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center">
+                        {index + 1}
+                      </span>
+                      <span className="font-medium">{skill.skill}</span>
+                    </div>
+                    <span className="text-sm text-muted-foreground">{skill.count}</span>
                   </div>
-                  <span className="text-sm text-muted-foreground">{skill.count}</span>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">No skills data yet</p>
+              )}
             </div>
           </motion.div>
 

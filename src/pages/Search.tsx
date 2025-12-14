@@ -1,13 +1,13 @@
 import { useState, useMemo } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { mockCandidates } from '@/data/mockCandidates';
+import { useCandidates } from '@/hooks/useCandidates';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CandidateCard } from '@/components/candidates/CandidateCard';
-import { Search, Sparkles, X } from 'lucide-react';
+import { Search, Sparkles, X, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Label } from '@/components/ui/label';
 
@@ -17,6 +17,7 @@ const allSkills = [
 ];
 
 export default function SearchPage() {
+  const { data: candidates, isLoading } = useCandidates();
   const [searchQuery, setSearchQuery] = useState('');
   const [jobDescription, setJobDescription] = useState('');
   const [experienceRange, setExperienceRange] = useState([0, 15]);
@@ -24,38 +25,40 @@ export default function SearchPage() {
   const [hasSearched, setHasSearched] = useState(false);
 
   const filteredCandidates = useMemo(() => {
-    if (!hasSearched) return [];
+    if (!hasSearched || !candidates) return [];
 
-    return mockCandidates.filter((candidate) => {
+    return candidates.filter((candidate) => {
       // Keyword search
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
+        const employmentHistory = (candidate.employment_history as Array<{ company?: string; position?: string }>) || [];
         const matchesSearch =
-          candidate.fullName.toLowerCase().includes(query) ||
-          candidate.skills.some((s) => s.toLowerCase().includes(query)) ||
-          candidate.employmentHistory.some(e => 
-            e.company.toLowerCase().includes(query) ||
-            e.position.toLowerCase().includes(query)
+          candidate.full_name.toLowerCase().includes(query) ||
+          candidate.skills?.some((s) => s.toLowerCase().includes(query)) ||
+          employmentHistory.some(e => 
+            e.company?.toLowerCase().includes(query) ||
+            e.position?.toLowerCase().includes(query)
           );
         if (!matchesSearch) return false;
       }
 
       // Experience filter
-      if (candidate.totalExperience < experienceRange[0] || candidate.totalExperience > experienceRange[1]) {
+      const exp = candidate.total_experience || 0;
+      if (exp < experienceRange[0] || exp > experienceRange[1]) {
         return false;
       }
 
       // Skills filter
       if (selectedSkills.length > 0) {
         const hasRequiredSkills = selectedSkills.some(skill => 
-          candidate.skills.some(s => s.toLowerCase() === skill.toLowerCase())
+          candidate.skills?.some(s => s.toLowerCase() === skill.toLowerCase())
         );
         if (!hasRequiredSkills) return false;
       }
 
       return true;
     });
-  }, [searchQuery, experienceRange, selectedSkills, hasSearched]);
+  }, [candidates, searchQuery, experienceRange, selectedSkills, hasSearched]);
 
   const handleSearch = () => {
     setHasSearched(true);
@@ -76,6 +79,16 @@ export default function SearchPage() {
     setSelectedSkills([]);
     setHasSearched(false);
   };
+
+  if (isLoading) {
+    return (
+      <AppLayout title="Search Candidates">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout title="Search Candidates">
