@@ -1,0 +1,102 @@
+import { Candidate } from '@/types/candidate';
+import { StageBadge } from '@/components/ui/stage-badge';
+import { MapPin, Briefcase, Mail, Phone } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
+
+interface CandidateCardProps {
+  candidate: Candidate;
+  index: number;
+}
+
+export function CandidateCard({ candidate, index }: CandidateCardProps) {
+  const initials = candidate.fullName
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase();
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: index * 0.05 }}
+    >
+      <Link
+        to={`/candidates/${candidate.id}`}
+        className="block glass-card rounded-xl p-5 card-hover group"
+      >
+        <div className="flex items-start gap-4">
+          {/* Avatar */}
+          <div className="w-12 h-12 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-semibold flex-shrink-0">
+            {initials}
+          </div>
+
+          {/* Main Info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="font-heading font-semibold text-lg group-hover:text-primary transition-colors">
+                  {candidate.fullName}
+                </h3>
+                <p className="text-muted-foreground text-sm">
+                  {candidate.employmentHistory[0]?.position} at {candidate.employmentHistory[0]?.company}
+                </p>
+              </div>
+              <StageBadge stage={candidate.stage} />
+            </div>
+
+            {/* Meta Info */}
+            <div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <MapPin className="w-4 h-4" />
+                {candidate.location}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Briefcase className="w-4 h-4" />
+                {candidate.totalExperience} years
+              </span>
+            </div>
+
+            {/* Skills */}
+            <div className="flex flex-wrap gap-1.5 mt-3">
+              {candidate.skills.slice(0, 5).map((skill) => (
+                <span
+                  key={skill}
+                  className="px-2 py-0.5 bg-secondary text-secondary-foreground text-xs rounded-md"
+                >
+                  {skill}
+                </span>
+              ))}
+              {candidate.skills.length > 5 && (
+                <span className="px-2 py-0.5 text-muted-foreground text-xs">
+                  +{candidate.skills.length - 5} more
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Contact Quick Actions */}
+        <div className="flex items-center gap-3 mt-4 pt-4 border-t border-border">
+          <a
+            href={`mailto:${candidate.email}`}
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors"
+          >
+            <Mail className="w-4 h-4" />
+            <span className="hidden sm:inline">{candidate.email}</span>
+          </a>
+          <a
+            href={`tel:${candidate.phone}`}
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors"
+          >
+            <Phone className="w-4 h-4" />
+            <span className="hidden sm:inline">{candidate.phone}</span>
+          </a>
+        </div>
+      </Link>
+    </motion.div>
+  );
+}
