@@ -319,10 +319,11 @@ export default function CandidateDetail() {
                         <div className="absolute left-[-9px] top-0 w-4 h-4 rounded-full bg-primary border-4 border-background" />
                         <div>
                           <h4 className="font-semibold">{job.role}</h4>
-                          <p className="text-muted-foreground">{job.company}</p>
+                          <p className="font-200">{job.company}</p>
                           <p className="text-sm text-muted-foreground mt-1">
                             {job.startDate} - {job.current ? 'Present' : job.endDate}
                           </p>
+                          <p className="text-muted-foreground text-sm">{job.roleSummary}</p>
                         </div>
                       </div>
                     )) : (
