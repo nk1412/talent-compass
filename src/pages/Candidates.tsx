@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Search, SlidersHorizontal, X, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Database } from '@/integrations/supabase/types';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 type PipelineStage = Database['public']['Enums']['pipeline_stage'];
 
@@ -35,10 +36,11 @@ export default function Candidates() {
   const [stageFilter, setStageFilter] = useState<PipelineStage | 'all'>('all');
   const [experienceFilter, setExperienceFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
+  const isMobile = useIsMobile();
 
   const filteredCandidates = useMemo(() => {
     if (!candidates) return [];
-    
+
     return candidates.filter((candidate) => {
       // Search filter
       if (searchQuery) {
@@ -104,42 +106,80 @@ export default function Candidates() {
     <AppLayout title="Candidates">
       {/* Search & Filters Bar */}
       <div className="glass-card rounded-xl p-4 mb-6">
-        <div className="flex flex-col md:flex-row gap-4">
-          {/* Search Input */}
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search by name, email, skills, location..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 bg-background"
-            />
-          </div>
+        {!isMobile ? (
+          <div className="flex flex-col md:flex-row gap-4">
+            {/* Search Input */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search by name, email, skills, location..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 bg-background"
+              />
+            </div>
 
-          {/* Filter Toggle */}
-          <div className="flex items-center gap-2">
-            <Button
-              variant={showFilters ? 'default' : 'outline'}
-              onClick={() => setShowFilters(!showFilters)}
-              className="gap-2"
-            >
-              <SlidersHorizontal className="w-4 h-4" />
-              Filters
-              {activeFiltersCount > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 bg-primary-foreground/20 rounded-full text-xs">
-                  {activeFiltersCount}
-                </span>
-              )}
-            </Button>
-            {activeFiltersCount > 0 && (
-              <Button variant="ghost" size="sm" onClick={clearFilters}>
-                <X className="w-4 h-4 mr-1" />
-                Clear
+            {/* Filter Toggle */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant={showFilters ? 'default' : 'outline'}
+                onClick={() => setShowFilters(!showFilters)}
+                className="gap-2"
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                Filters
+                {activeFiltersCount > 0 && (
+                  <span className="ml-1 px-1.5 py-0.5 bg-primary-foreground/20 rounded-full text-xs">
+                    {activeFiltersCount}
+                  </span>
+                )}
               </Button>
-            )}
+              {activeFiltersCount > 0 && (
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                  <X className="w-4 h-4 mr-1" />
+                  Clear
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex md:flex-row gap-4">
+            {/* Search Input */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search by name, email, skills, location..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 bg-background"
+              />
+            </div>
+
+            {/* Filter Toggle */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant={showFilters ? 'default' : 'outline'}
+                onClick={() => setShowFilters(!showFilters)}
+                className="gap-2"
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                {activeFiltersCount > 0 && (
+                  <span className="ml-1 px-1.5 py-0.5 bg-primary-foreground/20 rounded-full text-xs">
+                    {activeFiltersCount}
+                  </span>
+                )}
+              </Button>
+              {activeFiltersCount > 0 && (
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                  <X className="w-4 h-4 mr-1" />
+                  Clear
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Expanded Filters */}
         <AnimatePresence>

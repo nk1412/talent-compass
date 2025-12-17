@@ -20,6 +20,8 @@ import {
   Edit,
   ExternalLink,
   Loader2,
+  FolderKanban,
+  Wrench,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -46,12 +48,21 @@ interface Education {
   graduationYear?: number;
 }
 
+interface Projects {
+  name?: string;
+  description?: string;
+  link?: string;
+  tools?: string[];
+}
+
 interface Employment {
   company?: string;
-  position?: string;
+  role?: string;
+  duration?: string;
   startDate?: string;
   endDate?: string;
   current?: boolean;
+  roleSummary?: string;
 }
 
 export default function CandidateDetail() {
@@ -59,7 +70,7 @@ export default function CandidateDetail() {
   const { data: candidate, isLoading } = useCandidate(id || '');
   const updateCandidate = useUpdateCandidate();
   const { toast } = useToast();
-  
+
   const [currentStage, setCurrentStage] = useState<PipelineStage>('screening');
   const [notes, setNotes] = useState('');
 
@@ -132,6 +143,7 @@ export default function CandidateDetail() {
 
   const education = (candidate.education as Education[]) || [];
   const employmentHistory = (candidate.employment_history as Employment[]) || [];
+  const projects = (candidate.projects as Projects[]) || [];
   const currentJob = employmentHistory[0];
   const skills = candidate.skills || [];
   const tags = candidate.tags || [];
@@ -163,7 +175,7 @@ export default function CandidateDetail() {
                     <h1 className="font-heading text-2xl font-bold">{candidate.full_name}</h1>
                     {currentJob && (
                       <p className="text-muted-foreground mt-1">
-                        {currentJob.position} at {currentJob.company}
+                        {currentJob.role} at {currentJob.company}
                       </p>
                     )}
                   </div>
@@ -216,6 +228,9 @@ export default function CandidateDetail() {
                 </TabsTrigger>
                 <TabsTrigger value="experience" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-3 px-4">
                   Experience
+                </TabsTrigger>
+                <TabsTrigger value="projects" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-3 px-4">
+                  Projects
                 </TabsTrigger>
                 <TabsTrigger value="resume" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent py-3 px-4">
                   Resume
@@ -303,7 +318,7 @@ export default function CandidateDetail() {
                       <div key={index} className="relative pl-6 border-l-2 border-border pb-6 last:pb-0">
                         <div className="absolute left-[-9px] top-0 w-4 h-4 rounded-full bg-primary border-4 border-background" />
                         <div>
-                          <h4 className="font-semibold">{job.position}</h4>
+                          <h4 className="font-semibold">{job.role}</h4>
                           <p className="text-muted-foreground">{job.company}</p>
                           <p className="text-sm text-muted-foreground mt-1">
                             {job.startDate} - {job.current ? 'Present' : job.endDate}
@@ -314,6 +329,54 @@ export default function CandidateDetail() {
                       <p className="text-sm text-muted-foreground">No work history listed</p>
                     )}
                   </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="projects" className="mt-6">
+                <div className="glass-card rounded-xl p-5">
+                  <h3 className="font-heading font-semibold mb-4">Projects</h3>
+                  {projects && projects.length > 0 ? (
+                    <div className="space-y-4">
+                      {projects.map((project) => (
+                        <div key={project.name} className="p-4 bg-secondary/50 rounded-lg" onClick={() => window.open(project.link, "_blank", "noopener,noreferrer")}>
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-start gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                <FolderKanban className="w-5 h-5 text-primary" />
+                              </div>
+                              <div className="flex-1">
+                                <h4 className="font-semibold">{project.name}</h4>
+                                {project.description && (
+                                  <p className="text-sm text-muted-foreground mt-1">{project.description}</p>
+                                )}
+                                {project.tools && project?.tools?.length > 0 && (
+                                  <div className="flex items-center gap-2 mt-2">
+                                    <Wrench className="w-3.5 h-3.5 text-muted-foreground" />
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {project?.tools?.map((tool) => (
+                                        <span key={tool} className="px-3 py-1.5 bg-primary/10 text-primary rounded text-xs font-medium">
+                                          {tool}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            {project.link && (
+                              <div
+                                className="flex items-center gap-1.5 text-sm text-primary hover:underline"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No projects listed</p>
+                  )}
                 </div>
               </TabsContent>
 

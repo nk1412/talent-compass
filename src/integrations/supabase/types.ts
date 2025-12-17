@@ -25,19 +25,21 @@ export type Database = {
           expected_salary: number | null
           full_name: string
           id: string
+          links: Json | null
           location: string | null
           notes: string | null
           notice_period: string | null
           parsed_resume_text: string | null
           phone: string | null
-          relevant_experience: number | null
+          projects: Json | null
+          relevant_experience: string | null
           resume_file_name: string | null
           resume_file_path: string | null
           skills: string[] | null
           source: string | null
           stage: Database["public"]["Enums"]["pipeline_stage"] | null
           tags: string[] | null
-          total_experience: number | null
+          total_experience: string | null
           updated_at: string
         }
         Insert: {
@@ -50,19 +52,21 @@ export type Database = {
           expected_salary?: number | null
           full_name: string
           id?: string
+          links?: Json | null
           location?: string | null
           notes?: string | null
           notice_period?: string | null
           parsed_resume_text?: string | null
           phone?: string | null
-          relevant_experience?: number | null
+          projects?: Json | null
+          relevant_experience?: string | null
           resume_file_name?: string | null
           resume_file_path?: string | null
           skills?: string[] | null
           source?: string | null
           stage?: Database["public"]["Enums"]["pipeline_stage"] | null
           tags?: string[] | null
-          total_experience?: number | null
+          total_experience?: string | null
           updated_at?: string
         }
         Update: {
@@ -75,19 +79,21 @@ export type Database = {
           expected_salary?: number | null
           full_name?: string
           id?: string
+          links?: Json | null
           location?: string | null
           notes?: string | null
           notice_period?: string | null
           parsed_resume_text?: string | null
           phone?: string | null
-          relevant_experience?: number | null
+          projects?: Json | null
+          relevant_experience?: string | null
           resume_file_name?: string | null
           resume_file_path?: string | null
           skills?: string[] | null
           source?: string | null
           stage?: Database["public"]["Enums"]["pipeline_stage"] | null
           tags?: string[] | null
-          total_experience?: number | null
+          total_experience?: string | null
           updated_at?: string
         }
         Relationships: []

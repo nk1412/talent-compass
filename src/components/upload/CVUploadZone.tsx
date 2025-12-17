@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { uploadResume, parseResumeWithAI, createCandidate } from '@/lib/api/candidates';
 import { useQueryClient } from '@tanstack/react-query';
 import * as pdfjsLib from 'pdfjs-dist';
+import mammoth from 'mammoth';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
@@ -76,6 +77,32 @@ export function CVUploadZone() {
     return fullText;
   };
 
+  const extractContentFromDocx = async (file: File): Promise<string> => {
+    const arrayBuffer = await file.arrayBuffer();
+    const result = await mammoth.convertToHtml({ arrayBuffer });
+    const html = result.value;
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = html;
+
+    const links = tempDiv.getElementsByTagName("a");
+    for (let i = links.length - 1; i >= 0; i--) {
+      const link = links[i];
+      const href = link.getAttribute("href");
+      const text = link.textContent;
+
+      if (href && text) {
+        link.textContent = `${text} (${href})`;
+      }
+    }
+
+    const paragraphs = tempDiv.getElementsByTagName("p");
+    for (let i = 0; i < paragraphs.length; i++) {
+      paragraphs[i].appendChild(document.createTextNode("\n"));
+    }
+
+    return tempDiv.textContent || "";
+  };
+
   const processFile = async (file: File, fileId: string) => {
     try {
       // Update to uploading status
@@ -100,6 +127,11 @@ export function CVUploadZone() {
       } else if (fileType === "text/plain") {
         // Standard text read
         text = await file.text();
+      } else if (
+        file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+        file.name.endsWith(".docx")
+      ) {
+        text = await extractContentFromDocx(file);
       } else {
         console.warn("Word document parsing requires 'mammoth' or server-side parsing.");
         text = "Text extraction for Word documents pending implementation.";
@@ -118,18 +150,21 @@ export function CVUploadZone() {
 
       // Create candidate in database
       await createCandidate({
-        full_name: parsedData.fullName || 'Unknown',
-        email: parsedData.email || `unknown-${Date.now()}@placeholder.com`,
-        phone: parsedData.phone,
-        location: parsedData.location,
-        total_experience: parsedData.totalExperience || 0,
-        skills: parsedData.skills || [],
-        education: parsedData.education || [],
-        employment_history: parsedData.employmentHistory || [],
+        full_name: parsedData?.data?.fullName || 'Unknown',
+        email: parsedData?.data?.email || `unknown-${Date.now()}@placeholder.com`,
+        phone: parsedData?.data?.phone,
+        location: parsedData?.data?.location,
+        total_experience: parsedData?.data?.totalExperience || 0,
+        relevant_experience: parsedData?.data?.relevantExperience || 0,
+        skills: parsedData?.data?.skills || [],
+        links: parsedData?.data?.links || [],
+        projects: parsedData?.data?.projects || [],
+        education: parsedData?.data?.education || [],
+        employment_history: parsedData?.data?.employmentHistory || [],
         resume_file_path: path,
         resume_file_name: fileName,
         parsed_resume_text: text.slice(0, 10000), // Limit text size
-        source: parsedData.source || 'CV Upload',
+        source: parsedData?.data?.source || 'CV Upload',
         stage: 'screening',
       });
 
@@ -142,7 +177,7 @@ export function CVUploadZone() {
 
       toast({
         title: 'CV Processed Successfully',
-        description: `${parsedData.fullName || fileName} has been added to candidates.`,
+        description: `${parsedData?.data?.fullName || fileName} has been added to candidates.`,
       });
     } catch (error) {
       console.error('Error processing file:', error);
