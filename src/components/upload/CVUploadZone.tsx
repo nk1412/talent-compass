@@ -8,6 +8,9 @@ import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { uploadResume, parseResumeWithAI, createCandidate } from '@/lib/api/candidates';
 import { useQueryClient } from '@tanstack/react-query';
+import * as pdfjsLib from 'pdfjs-dist';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 interface UploadedFile {
   id: string;
@@ -21,6 +24,57 @@ export function CVUploadZone() {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const extractContentFromPDF = async (file: File): Promise<string> => {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+    let fullText = "";
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const annotations = await page.getAnnotations();
+      const items = textContent.items as any[];
+
+      const getLinkForItem = (item: any) => {
+        if (!item) return null;
+        const x = item.transform[4];
+        const y = item.transform[5];
+
+        return annotations.find((ann: any) => {
+          if (ann.subtype === 'Link' && ann.url && ann.rect) {
+            const [xMin, yMin, xMax, yMax] = ann.rect;
+            return (x >= xMin - 2 && x <= xMax + 2 && y >= yMin - 2 && y <= yMax + 2);
+          }
+          return false;
+        });
+      };
+
+      let pageText = "";
+
+      for (let j = 0; j < items.length; j++) {
+        const currentItem = items[j];
+        const nextItem = items[j + 1]; // Look ahead to the next item
+
+        const currentLink = getLinkForItem(currentItem);
+        const nextLink = getLinkForItem(nextItem);
+
+        let textPart = currentItem.str;
+
+        if (currentLink) {
+          if (!nextLink || nextLink.url !== currentLink.url) {
+            textPart += ` (${currentLink.url})`;
+          }
+        }
+        pageText += textPart + (items[j].hasEOL ? "\n" : " ");
+      }
+
+      fullText += pageText + "\n";
+    }
+
+    return fullText;
+  };
 
   const processFile = async (file: File, fileId: string) => {
     try {
@@ -37,7 +91,19 @@ export function CVUploadZone() {
       );
 
       // Read file content for parsing
-      const text = await file.text();
+      let text = "";
+      const fileType = file.type;
+
+      if (fileType === "application/pdf") {
+        // Use the PDF helper
+        text = await extractContentFromPDF(file);
+      } else if (fileType === "text/plain") {
+        // Standard text read
+        text = await file.text();
+      } else {
+        console.warn("Word document parsing requires 'mammoth' or server-side parsing.");
+        text = "Text extraction for Word documents pending implementation.";
+      }
 
       setFiles((prev) =>
         prev.map((f) => (f.id === fileId ? { ...f, status: 'processing', progress: 70 } : f))
