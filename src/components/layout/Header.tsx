@@ -19,7 +19,7 @@ interface HeaderProps {
 
 export function Header({ title }: HeaderProps) {
   const { user, signOut } = useAuth();
-  const userDetails = getUserDetails(user?.id);
+  // const userDetails = getUserDetails(user?.id);
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
@@ -55,7 +55,7 @@ export function Header({ title }: HeaderProps) {
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                 <User className="w-4 h-4 text-primary" />
               </div>
-              <span className="hidden md:inline font-medium">{userDetails?.full_name || 'User'}</span>
+              <span className="hidden md:inline font-medium">{user?.email?.split('@')[0] || 'User'}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">

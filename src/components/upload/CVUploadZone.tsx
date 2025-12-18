@@ -196,7 +196,7 @@ export function CVUploadZone() {
     }
   };
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const newFiles: UploadedFile[] = acceptedFiles.map((file) => ({
       id: Math.random().toString(36).substr(2, 9),
       file,
@@ -207,9 +207,16 @@ export function CVUploadZone() {
     setFiles((prev) => [...prev, ...newFiles]);
 
     // Process each file
-    newFiles.forEach((uploadedFile) => {
-      processFile(uploadedFile.file, uploadedFile.id);
-    });
+    for (const uploadedFile of newFiles) {
+      try {
+        await processFile(uploadedFile.file, uploadedFile.id);
+
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+      } catch (err) {
+        console.error("Sequence error:", err);
+      }
+    }
   }, []);
 
   const removeFile = (fileId: string) => {
